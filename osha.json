@@ -1,0 +1,20 @@
+{
+  "Michigan": {
+    "hardhat": {
+      "rule": "MIOSHA Rule 408.40114",
+      "consequence": "Fine up to $7,000 per violation"
+    },
+    "safety_goggles": {
+      "rule": "MIOSHA Rule 408.13329",
+      "consequence": "Citation and required retraining"
+    }
+  },
+  "California": {
+    "vest": {
+      "rule": "Cal/OSHA §3380",
+      "consequence": "Serious violation, fine up to $25,000"
+    }
+  }
+}
+
+sk_2dd5abcd14084e898a242d8561c2140a3ab5bfe8650b47029a65628c55c7381a
