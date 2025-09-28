@@ -2,8 +2,7 @@
   "frame_id": 123,
   "state": "Michigan",
   "violations": [
-    {"person_id": 1, "missing": ["safety_goggles"]},
-    {"person_id": 2, "missing": ["hardhat", "vest"]}
+    {"person_id": 1, "missing": ["safety_goggles"]}
   ]
 }
 
