@@ -1,0 +1,6 @@
+  - name: ClientSimulator
+    path: ./data_agent.py
+  - name: RequestAgent
+    path: ./continuous_request.py
+  - name: Compliance
+    path: ./smart_agent.py
