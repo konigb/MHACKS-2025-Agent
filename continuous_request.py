@@ -1,111 +1,44 @@
 import asyncio
-from typing import List, Dict
-from pydantic import BaseModel
 from uagents import Agent, Context
+from models import ViolationMessage, EnrichedViolation, EnrichedMessage
 
-# ------------------------
-# Pydantic models
-# ------------------------
-
-class ViolationItem(BaseModel):
-    item: str
-
-class Violation(BaseModel):
-    person_id: int
-    missing: List[ViolationItem]
-
-class ViolationMessage(BaseModel):
-    frame_id: int
-    state: str
-    violations: List[Violation]
-
-class MissingItem(BaseModel):
-    item: str
-    rule: str
-    consequence: str
-
-class EnrichedViolation(BaseModel):
-    person_id: int
-    missing: List[MissingItem]
-
-class EnrichedMessage(BaseModel):
-    frame_id: int
-    state: str
-    violations: List[EnrichedViolation]
-
-# ------------------------
-# Initialize agent
-# ------------------------
+COMPLIANCE_ADDRESS = "agent1qgy3ud82pj2sj6dwm8k8eth4pwyzzanc24ske40et2mcd8jyqx3dwkynrnc"
 
 request_agent = Agent(
     name="RequestAgent",
-    seed="request agent seed",
+    seed="request agent seed phrase",
     port=8001,
     endpoint=["http://127.0.0.1:8001/submit"]
 )
 
-# ------------------------
-# Helper: convert YOLOX detections to ViolationMessage
-# ------------------------
+# Handle a single ViolationMessage at a time
+@request_agent.on_message(model=ViolationMessage)
+async def handle_batch(ctx: Context, sender: str, msg: ViolationMessage):
+    ctx.logger.info(f"[RequestAgent]: Received batch {msg.frame_start}-{msg.frame_end} from {sender}")
 
-def build_violation_message(frame_id: int, state: str, detections: Dict[int, List[str]]) -> ViolationMessage:
-    """
-    detections: {person_id: ["safety_goggles", "hardhat"]}
-    """
-    violations = [
-        Violation(person_id=pid, missing=[ViolationItem(item=i) for i in items])
-        for pid, items in detections.items()
+    enriched_violations = [
+        EnrichedViolation(
+            person_id=v.person_id,
+            missing=v.missing
+        )
+        for v in msg.violations
     ]
-    return ViolationMessage(frame_id=frame_id, state=state, violations=violations)
 
-# ------------------------
-# Simulate continuous YOLOX feed
-# ------------------------
+    enriched_msg = EnrichedMessage(
+        frame_start=msg.frame_start,
+        frame_end=msg.frame_end,
+        state=msg.state,
+        persons=msg.persons,
+        violations=enriched_violations
+    )
 
-async def simulate_camera_feed(ctx: Context):
-    """
-    Replace this function with your real YOLOX frame detection loop.
-    """
-    compliance_address = "agent1qww3ju3h6kfcuqf54gkghvt2pqe8qp97a7nzm2vp8plfxflc0epzcjsv79t"  # Replace with your Compliance agent address
-    frame_id = 0
-
-    while True:
-        frame_id += 1
-
-        # Simulated YOLOX detections for this frame
-        # {person_id: [list of missing items]}
-        detections = {
-            1: ["safety_goggles"],
-            2: ["hardhat", "gloves"]
-        }
-
-        message = build_violation_message(frame_id=frame_id, state="Michigan", detections=detections)
-
-        ctx.logger.info(f"Sending violation message for frame {frame_id}: {message.dict()}")
-        await ctx.send(compliance_address, message)
-
-        await asyncio.sleep(10)  # simulate 1 FPS; adjust to your video frame rate
-
-# ------------------------
-# Startup: begin continuous feed
-# ------------------------
+    await ctx.send(COMPLIANCE_ADDRESS, enriched_msg)
+    ctx.logger.info(f"[RequestAgent]: Forwarded batch {msg.frame_start}-{msg.frame_end} to Compliance agent")
+    await asyncio.sleep(1)
 
 @request_agent.on_event("startup")
-async def start_feed(ctx: Context):
-    ctx.logger.info(f"Request agent started with address {request_agent.address}")
-    asyncio.create_task(simulate_camera_feed(ctx))
-
-# ------------------------
-# Handle enriched response
-# ------------------------
-
-@request_agent.on_message(model=EnrichedMessage)
-async def handle_response(ctx: Context, sender: str, msg: EnrichedMessage):
-    ctx.logger.info(f"Received enriched data from {sender}: {msg.dict()}")
-
-# ------------------------
-# Run agent
-# ------------------------
+async def startup(ctx: Context):
+    ctx.logger.info(f"[RequestAgent]: Running at {request_agent.address}")
 
 if __name__ == "__main__":
     request_agent.run()
